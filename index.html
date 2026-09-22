@@ -9,15 +9,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg: #12141c;
-    --panel: #1b1e2a;
-    --panel-2: #232739;
-    --line: #333a52;
-    --cream: #f1ede3;
-    --dim: #9aa0b8;
-    --amber: #e8a33d;
-    --amber-dim: #7a5a2a;
-    --live: #4fae74;
+    --bg: #0a0a0a;
+    --panel: #121212;
+    --panel-2: #1a1a1a;
+    --line: #2a2a2a;
+    --cream: #f2f2f2;
+    --dim: #8a8a8a;
+    --amber: #e0263c;
+    --amber-dim: #6e1420;
+    --live: #e0263c;
   }
   *{box-sizing:border-box;}
   html,body{height:100%;}
@@ -151,9 +151,58 @@
 
   ::-webkit-scrollbar{width:8px;}
   ::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+
+  /* ---- smooth "Netflix-like" motion polish ---- */
+  html{scroll-behavior:smooth;}
+  .chat-log{scroll-behavior:smooth;}
+  button{transition:transform .2s cubic-bezier(.4,0,.2,1), background-color .2s ease, border-color .2s ease, color .2s ease;}
+  .btn-primary:hover{transform:translateY(-1px) scale(1.015);}
+  .btn-primary:active{transform:scale(.98);}
+  .btn-ghost:hover{transform:translateY(-1px);}
+  .source-tabs button{transition:all .25s cubic-bezier(.4,0,.2,1);}
+  .controls-bar button:hover{transform:scale(1.08);}
+  .field input, .loader-row input, .chat-form input{transition:border-color .2s ease;}
+
+  /* ---- screen transitions ---- */
+  #join-screen, #room-screen{transition:opacity .45s cubic-bezier(.4,0,.2,1), transform .45s cubic-bezier(.4,0,.2,1);}
+
+  /* ---- splash screen ---- */
+  #splash-screen{
+    position:fixed;inset:0;z-index:100;background:var(--bg);
+    display:flex;align-items:center;justify-content:center;
+    transition:opacity .5s cubic-bezier(.4,0,.2,1);
+  }
+  #splash-screen .splash-logo{
+    width:112px;height:112px;
+    animation:splashIn .7s cubic-bezier(.4,0,.2,1) both;
+  }
+  #splash-screen .splash-logo circle{animation:splashRing 1.6s ease-out infinite;transform-origin:center;}
+  #splash-screen .splash-name{
+    position:absolute;bottom:16%;left:0;right:0;text-align:center;
+    color:var(--dim);font-size:.8rem;letter-spacing:.04em;
+    animation:splashIn .7s .15s cubic-bezier(.4,0,.2,1) both;
+  }
+  @keyframes splashIn{
+    from{opacity:0;transform:scale(.82);}
+    to{opacity:1;transform:scale(1);}
+  }
+  @keyframes splashRing{
+    0%{opacity:1;}
+    70%{opacity:.35;}
+    100%{opacity:1;}
+  }
 </style>
 </head>
 <body>
+
+<!-- Splash screen shown briefly on load -->
+<div id="splash-screen">
+  <svg class="splash-logo" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="512" cy="512" r="298" fill="none" stroke="#d81f3d" stroke-width="30"/>
+    <path d="M436,368 L682,512 L436,656 Z" fill="#d81f3d" stroke="#d81f3d" stroke-width="28" stroke-linejoin="round"/>
+  </svg>
+  <p class="splash-name">SÉANCE</p>
+</div>
 
 <!-- Shown only if firebaseConfig below hasn't been filled in -->
 <div id="setup-screen" hidden>
@@ -286,6 +335,38 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
 
   const $ = (sel) => document.querySelector(sel);
 
+  // ---------- smooth screen transitions ----------
+  function transitionTo(hideEl, showEl) {
+    if (hideEl) {
+      hideEl.style.transition = 'opacity .4s cubic-bezier(.4,0,.2,1), transform .4s cubic-bezier(.4,0,.2,1)';
+      hideEl.style.opacity = '0';
+      hideEl.style.transform = 'translateY(-8px)';
+    }
+    setTimeout(() => {
+      if (hideEl) hideEl.hidden = true;
+      if (!showEl) return;
+      showEl.hidden = false;
+      showEl.style.transition = 'none';
+      showEl.style.opacity = '0';
+      showEl.style.transform = 'translateY(14px)';
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          showEl.style.transition = 'opacity .5s cubic-bezier(.4,0,.2,1), transform .5s cubic-bezier(.4,0,.2,1)';
+          showEl.style.opacity = '1';
+          showEl.style.transform = 'translateY(0)';
+        });
+      });
+    }, hideEl ? 380 : 0);
+  }
+
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      const splash = $('#splash-screen');
+      splash.style.opacity = '0';
+      setTimeout(() => { splash.hidden = true; }, 500);
+    }, 1400);
+  });
+
   // ---------- YouTube IFrame API ----------
   window.onYouTubeIframeAPIReady = function () {
     ytReady = true;
@@ -378,9 +459,8 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
     roomRef = rtdb.ref('rooms/' + code);
     chatRef = rtdb.ref('rooms/' + code + '/chat');
 
-    $('#join-screen').hidden = true;
-    $('#room-screen').hidden = false;
     $('#room-name-display').textContent = code;
+    transitionTo($('#join-screen'), $('#room-screen'));
 
     roomRef.once('value').then((snap) => {
       if (!snap.exists()) {
