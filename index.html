@@ -267,10 +267,11 @@
         <button class="btn-ghost" id="yt-load-btn">Charger pour tout le monde</button>
       </div>
 
-      <!-- local file picker (everyone does this on their own device) -->
+      <!-- host-only: choose a local file to broadcast live -->
       <div class="loader-row" id="local-loader" hidden>
         <input id="local-file-input" type="file" accept="video/*">
       </div>
+      <p class="viewer-note" id="stream-status" hidden>Connexion au flux de l'hôte…</p>
 
       <div class="controls-bar" id="controls-bar" hidden>
         <button id="play-btn" title="Lecture / Pause">▶</button>
@@ -279,7 +280,7 @@
         <span class="note">Tu es l'hôte — tes actions sont suivies par tout le monde</span>
       </div>
 
-      <p class="viewer-note" id="viewer-note" hidden>Seul l'hôte contrôle la lecture. Elle est répercutée automatiquement chez toi.</p>
+      <p class="viewer-note" id="viewer-note" hidden>Seul l'hôte contrôle la lecture — vidéo et son sont diffusés en direct chez toi.</p>
     </div>
 
     <div class="side-col">
@@ -335,6 +336,17 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
   let localVideoEl = null;
   let suppressRemoteEcho = false;
   let lastLocalHeartbeat = 0;
+
+  // ---- live streaming (WebRTC) for local-file mode ----
+  const iceServers = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
+  ];
+  let localStream = null;   // host's captured MediaStream
+  let peers = {};           // host: viewerId -> RTCPeerConnection
+  let myPeer = null;        // viewer: its own RTCPeerConnection
+  let lastStreamGen = null; // viewer: last broadcast generation it connected to
 
   const $ = (sel) => document.querySelector(sel);
 
@@ -414,46 +426,133 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
     return m ? m[1] : null;
   }
 
-  // ---------- local file mode ----------
+  // ---------- local file mode: host BROADCASTS the video live ----------
   function setupLocalVideo() {
     const wrap = $('#video-wrap');
     wrap.innerHTML = '';
     localVideoEl = document.createElement('video');
+    localVideoEl.playsInline = true;
     localVideoEl.controls = isHost;
+    localVideoEl.autoplay = true;
     wrap.appendChild(localVideoEl);
-
-    localVideoEl.addEventListener('play', () => { if (isHost && !suppressRemoteEcho) pushRoomState('play', localVideoEl.currentTime); });
-    localVideoEl.addEventListener('pause', () => { if (isHost && !suppressRemoteEcho) pushRoomState('pause', localVideoEl.currentTime); });
-    localVideoEl.addEventListener('seeked', () => { if (isHost && !suppressRemoteEcho) pushRoomState(localVideoEl.paused ? 'pause' : 'play', localVideoEl.currentTime); });
   }
 
   $('#local-file-input').addEventListener('change', (e) => {
     const file = e.target.files[0];
-    if (!file || !localVideoEl) return;
+    if (!file || !localVideoEl || !isHost) return;
     localVideoEl.src = URL.createObjectURL(file);
+    localVideoEl.onloadedmetadata = () => {
+      localVideoEl.play().catch(() => {});
+      startHostStream();
+    };
   });
 
-  // ---------- applying remote state (non-host viewers) ----------
+  function startHostStream() {
+    if (!localVideoEl) return;
+    try {
+      localStream = localVideoEl.captureStream ? localVideoEl.captureStream() : localVideoEl.mozCaptureStream();
+    } catch (err) {
+      alert("Ton navigateur ne permet pas de diffuser cette vidéo en direct.");
+      return;
+    }
+    resetBroadcast();
+    hostListenForViewers();
+    roomRef.update({ streamGen: Date.now() });
+  }
+
+  function resetBroadcast() {
+    Object.values(peers).forEach((pc) => { try { pc.close(); } catch (e) {} });
+    peers = {};
+    if (roomCode) rtdb.ref('rooms/' + roomCode + '/rtc').remove();
+  }
+
+  function hostListenForViewers() {
+    rtdb.ref('rooms/' + roomCode + '/rtc').on('child_added', (snap) => {
+      const viewerId = snap.key;
+      const data = snap.val();
+      if (data && data.offer && !peers[viewerId]) handleViewerOffer(viewerId, data.offer);
+    });
+  }
+
+  async function handleViewerOffer(viewerId, offerDesc) {
+    const pc = new RTCPeerConnection({ iceServers });
+    peers[viewerId] = pc;
+    if (localStream) localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
+    pc.onicecandidate = (e) => {
+      if (e.candidate) rtdb.ref('rooms/' + roomCode + '/rtc/' + viewerId + '/iceHost').push(e.candidate.toJSON());
+    };
+    try {
+      await pc.setRemoteDescription(new RTCSessionDescription(offerDesc));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      rtdb.ref('rooms/' + roomCode + '/rtc/' + viewerId + '/answer').set({ type: answer.type, sdp: answer.sdp });
+      rtdb.ref('rooms/' + roomCode + '/rtc/' + viewerId + '/iceViewer').on('child_added', (s) => {
+        pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(() => {});
+      });
+    } catch (err) { console.error('Connexion spectateur échouée', err); }
+  }
+
+  function connectAsViewer() {
+    const status = $('#stream-status');
+    if (status) { status.hidden = false; status.textContent = 'Connexion au flux de l’hôte…'; }
+    if (myPeer) { try { myPeer.close(); } catch (e) {} }
+
+    const pc = new RTCPeerConnection({ iceServers });
+    myPeer = pc;
+    pc.addTransceiver('video', { direction: 'recvonly' });
+    pc.addTransceiver('audio', { direction: 'recvonly' });
+
+    pc.ontrack = (e) => {
+      if (status) status.hidden = true;
+      if (localVideoEl) {
+        localVideoEl.srcObject = e.streams[0];
+        showJoinStreamButton();
+      }
+    };
+    pc.onicecandidate = (e) => {
+      if (e.candidate) rtdb.ref('rooms/' + roomCode + '/rtc/' + myId + '/iceViewer').push(e.candidate.toJSON());
+    };
+
+    pc.createOffer().then((offer) => pc.setLocalDescription(offer).then(() => {
+      rtdb.ref('rooms/' + roomCode + '/rtc/' + myId + '/offer').set({ type: offer.type, sdp: offer.sdp });
+    }));
+
+    rtdb.ref('rooms/' + roomCode + '/rtc/' + myId + '/answer').on('value', (snap) => {
+      const a = snap.val();
+      if (a && pc.currentRemoteDescription === null) pc.setRemoteDescription(new RTCSessionDescription(a)).catch(() => {});
+    });
+    rtdb.ref('rooms/' + roomCode + '/rtc/' + myId + '/iceHost').on('child_added', (s) => {
+      pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(() => {});
+    });
+  }
+
+  function showJoinStreamButton() {
+    if ($('#join-stream-btn')) return;
+    const wrap = $('#video-wrap');
+    const btn = document.createElement('button');
+    btn.id = 'join-stream-btn';
+    btn.textContent = '▶ Rejoindre le flux';
+    btn.className = 'btn-primary';
+    btn.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:auto;padding:14px 22px;z-index:5;';
+    btn.onclick = () => { localVideoEl.play().catch(() => {}); btn.remove(); };
+    wrap.appendChild(btn);
+  }
+
+
+  // ---------- applying remote state (non-host viewers, YouTube only —
+  // local mode syncs inherently since the video itself is streamed live) ----------
   function applyRemoteState(data) {
-    if (!data) return;
+    if (!data || data.videoType !== 'youtube') return;
     const elapsed = data.state === 'play' ? (Date.now() - data.updatedAt) / 1000 : 0;
     const targetTime = Math.max(0, (data.time || 0) + elapsed);
 
-    if (data.videoType === 'youtube') {
-      if (!ytPlayer && data.videoId) { pendingYtId = data.videoId; if (ytReady) createYtPlayer(data.videoId); return; }
-      if (!ytPlayer) return;
-      suppressRemoteEcho = true;
-      const current = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0;
-      if (Math.abs(current - targetTime) > 1.5) ytPlayer.seekTo(targetTime, true);
-      if (data.state === 'play') ytPlayer.playVideo(); else ytPlayer.pauseVideo();
-      setTimeout(() => suppressRemoteEcho = false, 400);
-    } else if (data.videoType === 'local') {
-      if (!localVideoEl) return;
-      suppressRemoteEcho = true;
-      if (Math.abs(localVideoEl.currentTime - targetTime) > 1.5) localVideoEl.currentTime = targetTime;
-      if (data.state === 'play') localVideoEl.play().catch(()=>{}); else localVideoEl.pause();
-      setTimeout(() => suppressRemoteEcho = false, 400);
-    }
+    if (!ytPlayer && data.videoId) { pendingYtId = data.videoId; if (ytReady) createYtPlayer(data.videoId); return; }
+    if (!ytPlayer) return;
+    suppressRemoteEcho = true;
+    const current = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0;
+    if (Math.abs(current - targetTime) > 1.5) ytPlayer.seekTo(targetTime, true);
+    if (data.state === 'play') ytPlayer.playVideo(); else ytPlayer.pauseVideo();
+    setTimeout(() => suppressRemoteEcho = false, 400);
   }
 
   // ---------- room lifecycle ----------
@@ -480,24 +579,38 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
     roomRef.on('value', (snap) => {
       const data = snap.val();
       if (!data) return;
-      const wasHost = isHost;
       isHost = data.host === myId;
       updateHostUI(data);
       if (data.videoType !== sourceMode) switchSource(data.videoType, false);
-      if (!isHost) applyRemoteState(data);
+      if (data.videoType === 'youtube') {
+        if (!isHost) applyRemoteState(data);
+      } else if (data.videoType === 'local' && !isHost) {
+        if (data.streamGen && data.streamGen !== lastStreamGen) {
+          lastStreamGen = data.streamGen;
+          connectAsViewer();
+        }
+      }
     });
   }
 
   function updateHostUI(data) {
     $('#host-status').textContent = isHost ? 'Tu es l’hôte' : (data.hostName || 'Quelqu’un') + ' contrôle la lecture';
-    $('#controls-bar').hidden = !isHost;
+    $('#controls-bar').hidden = !isHost || sourceMode === 'local';
     $('#viewer-note').hidden = isHost;
     $('#yt-loader').hidden = sourceMode !== 'youtube' || !isHost;
-    $('#local-loader').hidden = sourceMode !== 'local';
+    $('#local-loader').hidden = sourceMode !== 'local' || !isHost;
     if (localVideoEl) localVideoEl.controls = isHost;
   }
 
   function switchSource(mode, writeToRoom) {
+    if (sourceMode === 'local' && mode !== 'local') {
+      if (isHost) {
+        if (localStream) { localStream.getTracks().forEach((t) => t.stop()); localStream = null; }
+        resetBroadcast();
+      }
+      if (myPeer) { try { myPeer.close(); } catch (e) {} myPeer = null; }
+      lastStreamGen = null;
+    }
     sourceMode = mode;
     $('#tab-youtube').classList.toggle('active', mode === 'youtube');
     $('#tab-local').classList.toggle('active', mode === 'local');
