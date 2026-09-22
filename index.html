@@ -338,11 +338,30 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
   let lastLocalHeartbeat = 0;
 
   // ---- live streaming (WebRTC) for local-file mode ----
-  const iceServers = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
-  ];
+  /* Compte TURN gratuit (fiable, contrairement à un relais partagé) :
+     1) Va sur https://dashboard.metered.ca/ → crée un compte gratuit.
+     2) Menu "Developers" → note ton "App Name" (ex: monapp) et ta "Secret Key" (API key).
+     3) Colle-les ci-dessous. */
+  const meteredAppName = "vidcast";
+  const meteredApiKey = "eQRsJ6MBqdRV6AyPFkQpZmFr5M0aeazqpNrXeyi4M5D_FtJQ";
+
+  const fallbackIceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+  let iceServersCache = null;
+
+  async function getIceServers() {
+    if (iceServersCache) return iceServersCache;
+    if (!meteredApiKey || meteredApiKey === "COLLE_TA_CLE_METERED_ICI") return fallbackIceServers;
+    try {
+      const res = await fetch('https://' + meteredAppName + '.metered.live/api/v1/turn/credentials?apiKey=' + meteredApiKey);
+      const servers = await res.json();
+      iceServersCache = fallbackIceServers.concat(servers);
+      return iceServersCache;
+    } catch (err) {
+      console.error('TURN Metered indisponible, repli sur STUN seul', err);
+      return fallbackIceServers;
+    }
+  }
+
   let localStream = null;   // host's captured MediaStream
   let peers = {};           // host: viewerId -> RTCPeerConnection
   let myPeer = null;        // viewer: its own RTCPeerConnection
@@ -475,6 +494,7 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
   }
 
   async function handleViewerOffer(viewerId, offerDesc) {
+    const iceServers = await getIceServers();
     const pc = new RTCPeerConnection({ iceServers });
     peers[viewerId] = pc;
     if (localStream) localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
@@ -492,11 +512,12 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
     } catch (err) { console.error('Connexion spectateur échouée', err); }
   }
 
-  function connectAsViewer() {
+  async function connectAsViewer() {
     const status = $('#stream-status');
     if (status) { status.hidden = false; status.textContent = 'Connexion au flux de l’hôte…'; }
     if (myPeer) { try { myPeer.close(); } catch (e) {} }
 
+    const iceServers = await getIceServers();
     const pc = new RTCPeerConnection({ iceServers });
     myPeer = pc;
     pc.addTransceiver('video', { direction: 'recvonly' });
