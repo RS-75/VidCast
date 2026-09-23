@@ -347,17 +347,28 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
 
   const fallbackIceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
   let iceServersCache = null;
+  let turnOk = false; // true once we confirm real TURN credentials were fetched
 
   async function getIceServers() {
     if (iceServersCache) return iceServersCache;
     if (!meteredApiKey || meteredApiKey === "COLLE_TA_CLE_METERED_ICI") return fallbackIceServers;
     try {
       const res = await fetch('https://' + meteredAppName + '.metered.live/api/v1/turn/credentials?apiKey=' + meteredApiKey);
+      if (!res.ok) {
+        const body = await res.text();
+        console.error('Réponse Metered non OK:', res.status, body);
+        return fallbackIceServers;
+      }
       const servers = await res.json();
+      if (!Array.isArray(servers) || !servers.some(s => (s.urls || '').toString().startsWith('turn:'))) {
+        console.error('Metered a répondu mais sans serveur TURN utilisable:', servers);
+        return fallbackIceServers;
+      }
+      turnOk = true;
       iceServersCache = fallbackIceServers.concat(servers);
       return iceServersCache;
     } catch (err) {
-      console.error('TURN Metered indisponible, repli sur STUN seul', err);
+      console.error('Appel à l’API Metered impossible (réseau/CORS ?)', err);
       return fallbackIceServers;
     }
   }
@@ -497,6 +508,7 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
     const iceServers = await getIceServers();
     const pc = new RTCPeerConnection({ iceServers });
     peers[viewerId] = pc;
+    pc.oniceconnectionstatechange = () => console.log('ICE state avec', viewerId, ':', pc.iceConnectionState);
     if (localStream) localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
     pc.onicecandidate = (e) => {
       if (e.candidate) rtdb.ref('rooms/' + roomCode + '/rtc/' + viewerId + '/iceHost').push(e.candidate.toJSON());
@@ -518,10 +530,24 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
     if (myPeer) { try { myPeer.close(); } catch (e) {} }
 
     const iceServers = await getIceServers();
+    if (status && !turnOk) status.textContent = 'Connexion (sans relais TURN — ne marchera que sur le même wifi)…';
     const pc = new RTCPeerConnection({ iceServers });
     myPeer = pc;
     pc.addTransceiver('video', { direction: 'recvonly' });
     pc.addTransceiver('audio', { direction: 'recvonly' });
+
+    pc.oniceconnectionstatechange = () => {
+      console.log('ICE state:', pc.iceConnectionState);
+      if (!status) return;
+      if (pc.iceConnectionState === 'checking') status.textContent = 'Connexion au flux de l’hôte…';
+      if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') status.hidden = true;
+      if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+        status.hidden = false;
+        status.textContent = turnOk
+          ? 'Connexion impossible malgré le relais TURN — regarde la console (F12) pour le détail.'
+          : 'Connexion impossible (pas de relais TURN actif) — vérifie ta clé Metered, ou testez sur le même wifi.';
+      }
+    };
 
     pc.ontrack = (e) => {
       if (status) status.hidden = true;
