@@ -37,7 +37,6 @@
   [hidden]{display:none !important;}
   a{color:var(--amber);}
 
-  /* ---- setup / config missing ---- */
   #setup-screen{
     max-width:640px;margin:10vh auto;padding:32px;background:var(--panel);
     border:1px solid var(--line);border-radius:4px;
@@ -46,7 +45,6 @@
   #setup-screen code{background:var(--panel-2);padding:2px 6px;border-radius:3px;font-size:.9em;}
   #setup-screen ol{line-height:1.8;padding-left:1.2em;}
 
-  /* ---- join screen ---- */
   #join-screen{
     max-width:420px;margin:14vh auto 0;padding:0 20px;text-align:center;
   }
@@ -72,9 +70,7 @@
   }
   .btn-ghost:hover{border-color:var(--amber);color:var(--amber);}
   .btn-small{padding:7px 12px;font-size:.8rem;}
-  .join-error{color:#e2795c;font-size:.85rem;min-height:1.2em;margin-top:10px;}
 
-  /* ---- room screen ---- */
   #room-screen{display:flex;flex-direction:column;height:100vh;}
   .topbar{
     display:flex;align-items:center;justify-content:space-between;
@@ -138,7 +134,6 @@
     border-radius:4px;padding:10px 12px;
   }
 
-  /* chat */
   .chat-header{padding:14px 16px;border-bottom:1px solid var(--line);font-size:.85rem;color:var(--dim);}
   .chat-log{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:10px;}
   .msg{font-size:.87rem;line-height:1.4;}
@@ -155,7 +150,6 @@
   ::-webkit-scrollbar{width:8px;}
   ::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
 
-  /* ---- smooth "Netflix-like" motion polish ---- */
   html{scroll-behavior:smooth;}
   .chat-log{scroll-behavior:smooth;}
   button{transition:transform .2s cubic-bezier(.4,0,.2,1), background-color .2s ease, border-color .2s ease, color .2s ease;}
@@ -166,10 +160,8 @@
   .controls-bar button:hover{transform:scale(1.08);}
   .field input, .loader-row input, .chat-form input{transition:border-color .2s ease;}
 
-  /* ---- screen transitions ---- */
   #join-screen, #room-screen{transition:opacity .45s cubic-bezier(.4,0,.2,1), transform .45s cubic-bezier(.4,0,.2,1);}
 
-  /* ---- splash screen ---- */
   #splash-screen{
     position:fixed;inset:0;z-index:100;background:var(--bg);
     display:flex;align-items:center;justify-content:center;
@@ -185,20 +177,12 @@
     color:var(--dim);font-size:.8rem;letter-spacing:.04em;
     animation:splashIn .7s .15s cubic-bezier(.4,0,.2,1) both;
   }
-  @keyframes splashIn{
-    from{opacity:0;transform:scale(.82);}
-    to{opacity:1;transform:scale(1);}
-  }
-  @keyframes splashRing{
-    0%{opacity:1;}
-    70%{opacity:.35;}
-    100%{opacity:1;}
-  }
+  @keyframes splashIn{ from{opacity:0;transform:scale(.82);} to{opacity:1;transform:scale(1);} }
+  @keyframes splashRing{ 0%{opacity:1;} 70%{opacity:.35;} 100%{opacity:1;} }
 </style>
 </head>
 <body>
 
-<!-- Splash screen shown briefly on load -->
 <div id="splash-screen">
   <svg class="splash-logo" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
     <circle cx="512" cy="512" r="298" fill="none" stroke="#d81f3d" stroke-width="30"/>
@@ -207,25 +191,14 @@
   <p class="splash-name">SÉANCE</p>
 </div>
 
-<!-- Shown only if firebaseConfig below hasn't been filled in -->
 <div id="setup-screen" hidden>
   <h1>Configuration requise</h1>
-  <p>Cette page a besoin d'un projet Firebase gratuit pour synchroniser la lecture et le chat entre les participants. Ça prend environ 5 minutes :</p>
-  <ol>
-    <li>Va sur <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> et crée un projet (gratuit).</li>
-    <li>Dans le projet, ouvre <strong>Realtime Database</strong> → Créer une base → démarre en <strong>mode test</strong>.</li>
-    <li>Dans les paramètres du projet (icône ⚙️), ajoute une application <strong>Web</strong> et copie l'objet <code>firebaseConfig</code>.</li>
-    <li>Ouvre le fichier <code>index.html</code>, cherche <code>const firebaseConfig</code> tout en bas, et colle tes valeurs à la place.</li>
-    <li>Enregistre, mets le fichier sur GitHub, active <strong>GitHub Pages</strong> dans les réglages du dépôt.</li>
-  </ol>
-  <p>Le détail complet est aussi dans <code>README.md</code>.</p>
+  <p>Cette page a besoin d'un projet Firebase gratuit. Remplis les informations dans le code source.</p>
 </div>
 
-<!-- Join / create room -->
 <div id="join-screen">
   <p class="brand">Séance</p>
   <p class="tagline">Regardez une vidéo ensemble, où que vous soyez</p>
-
   <form id="join-form">
     <div class="field">
       <label for="name-input">Ton prénom</label>
@@ -236,11 +209,9 @@
       <input id="code-input" type="text" maxlength="20" required placeholder="ex : cinema-du-vendredi" autocapitalize="off" autocomplete="off">
     </div>
     <button type="submit" class="btn-primary">Rejoindre / créer le salon</button>
-    <p class="join-error" id="join-error"></p>
   </form>
 </div>
 
-<!-- Room -->
 <div id="room-screen" hidden>
   <div class="topbar">
     <div class="room-id"><span>Salon</span><span id="room-name-display"></span></div>
@@ -254,33 +225,31 @@
     <div class="main-col">
       <div class="source-tabs">
         <button id="tab-youtube" class="active">YouTube</button>
-        <button id="tab-local">Fichier local / VLC</button>
+        <button id="tab-url">Lien vidéo direct (MP4)</button>
       </div>
 
       <div class="video-wrap" id="video-wrap">
         <div class="video-placeholder" id="video-placeholder">En attente d'une vidéo…</div>
       </div>
 
-      <!-- host-only: load a youtube video -->
       <div class="loader-row" id="yt-loader">
         <input id="yt-url-input" type="text" placeholder="Colle un lien ou un ID YouTube">
-        <button class="btn-ghost" id="yt-load-btn">Charger pour tout le monde</button>
+        <button class="btn-ghost" id="yt-load-btn">Charger</button>
       </div>
 
-      <!-- host-only: choose a local file to broadcast live -->
-      <div class="loader-row" id="local-loader" hidden>
-        <input id="local-file-input" type="file" accept="video/*">
+      <div class="loader-row" id="url-loader" hidden>
+        <input id="direct-url-input" type="text" placeholder="Colle un lien direct (.mp4, .webm...)">
+        <button class="btn-ghost" id="url-load-btn">Diffuser</button>
       </div>
-      <p class="viewer-note" id="stream-status" hidden>Connexion au flux de l'hôte…</p>
 
       <div class="controls-bar" id="controls-bar" hidden>
         <button id="play-btn" title="Lecture / Pause">▶</button>
         <button id="back-btn" title="-10s">−10</button>
         <button id="fwd-btn" title="+10s">+10</button>
-        <span class="note">Tu es l'hôte — tes actions sont suivies par tout le monde</span>
+        <span class="note">Tu es l'hôte — tes actions (Play, Pause, Avance) sont suivies par tout le monde</span>
       </div>
 
-      <p class="viewer-note" id="viewer-note" hidden>Seul l'hôte contrôle la lecture — vidéo et son sont diffusés en direct chez toi.</p>
+      <p class="viewer-note" id="viewer-note" hidden>Seul l'hôte contrôle la lecture. La vidéo est synchronisée en direct avec son lecteur.</p>
     </div>
 
     <div class="side-col">
@@ -299,8 +268,7 @@
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
 /* =========================================================
-   1) COLLE ICI LA CONFIG DE TON PROJET FIREBASE
-   (Console Firebase > Paramètres du projet > tes apps > Web)
+   CONFIG FIREBASE
    ========================================================= */
 const firebaseConfig = {
   apiKey: "AIzaSyCOPc94ff5ICne4DiZoqYtUGgLZPvZwTz8",
@@ -311,7 +279,6 @@ const firebaseConfig = {
   messagingSenderId: "624069042080",
   appId: "1:624069042080:web:31804904ce3dc8152f4ec5"
 };
-/* ========================================================= */
 
 if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
   document.getElementById('setup-screen').hidden = false;
@@ -320,7 +287,6 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
   firebase.initializeApp(firebaseConfig);
   const rtdb = firebase.database();
 
-  // ---- identity (per-device, kept in localStorage) ----
   const myId = (function(){
     let id = localStorage.getItem('seance_id');
     if (!id) { id = 'u-' + Math.random().toString(36).slice(2, 10); localStorage.setItem('seance_id', id); }
@@ -331,56 +297,15 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
   let roomCode = '';
   let roomRef = null, chatRef = null;
   let isHost = false;
-  let sourceMode = 'youtube'; // or 'local'
+  let sourceMode = 'youtube'; // 'youtube' ou 'url'
+  
   let ytPlayer = null, ytReady = false, pendingYtId = null;
-  let localVideoEl = null;
+  let directVideoEl = null;
   let suppressRemoteEcho = false;
-  let lastLocalHeartbeat = 0;
-
-  // ---- live streaming (WebRTC) for local-file mode ----
-  /* Compte TURN gratuit (fiable, contrairement à un relais partagé) :
-     1) Va sur https://dashboard.metered.ca/ → crée un compte gratuit.
-     2) Menu "Developers" → note ton "App Name" (ex: monapp) et ta "Secret Key" (API key).
-     3) Colle-les ci-dessous. */
-  const meteredAppName = "vidcast";
-  const meteredApiKey = "eQRsJ6MBqdRV6AyPFkQpZmFr5M0aeazqpNrXeyi4M5D_FtJQ";
-
-  const fallbackIceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
-  let iceServersCache = null;
-  let turnOk = false; // true once we confirm real TURN credentials were fetched
-
-  async function getIceServers() {
-    if (iceServersCache) return iceServersCache;
-    if (!meteredApiKey || meteredApiKey === "COLLE_TA_CLE_METERED_ICI") return fallbackIceServers;
-    try {
-      const res = await fetch('https://' + meteredAppName + '.metered.live/api/v1/turn/credentials?apiKey=' + meteredApiKey);
-      if (!res.ok) {
-        const body = await res.text();
-        console.error('Réponse Metered non OK:', res.status, body);
-        return fallbackIceServers;
-      }
-      const servers = await res.json();
-      if (!Array.isArray(servers) || !servers.some(s => (s.urls || '').toString().startsWith('turn:'))) {
-        console.error('Metered a répondu mais sans serveur TURN utilisable:', servers);
-        return fallbackIceServers;
-      }
-      turnOk = true;
-      iceServersCache = fallbackIceServers.concat(servers);
-      return iceServersCache;
-    } catch (err) {
-      console.error('Appel à l’API Metered impossible (réseau/CORS ?)', err);
-      return fallbackIceServers;
-    }
-  }
-
-  let localStream = null;   // host's captured MediaStream
-  let peers = {};           // host: viewerId -> RTCPeerConnection
-  let myPeer = null;        // viewer: its own RTCPeerConnection
-  let lastStreamGen = null; // viewer: last broadcast generation it connected to
 
   const $ = (sel) => document.querySelector(sel);
 
-  // ---------- smooth screen transitions ----------
+  // Transitions fluides
   function transitionTo(hideEl, showEl) {
     if (hideEl) {
       hideEl.style.transition = 'opacity .4s cubic-bezier(.4,0,.2,1), transform .4s cubic-bezier(.4,0,.2,1)';
@@ -412,41 +337,35 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
     }, 1400);
   });
 
-  // ---------- YouTube IFrame API ----------
+  function pushRoomState(state, time) {
+    if (!roomRef) return;
+    roomRef.update({ state, time, updatedAt: Date.now() });
+  }
+
+  // --- Youtube Logique ---
   window.onYouTubeIframeAPIReady = function () {
     ytReady = true;
     if (pendingYtId) createYtPlayer(pendingYtId);
   };
 
   function createYtPlayer(videoId) {
-    const wrap = $('#video-wrap');
-    wrap.innerHTML = '<div id="yt-target"></div>';
+    $('#video-wrap').innerHTML = '<div id="yt-target"></div>';
     ytPlayer = new YT.Player('yt-target', {
       videoId: videoId,
       playerVars: { rel: 0, playsinline: 1 },
-      events: {
-        onReady: () => {},
-        onStateChange: onYtStateChange
-      }
+      events: { onStateChange: (e) => {
+        if (!isHost || suppressRemoteEcho) return;
+        if (e.data === YT.PlayerState.PLAYING || e.data === YT.PlayerState.PAUSED) {
+          pushRoomState(e.data === YT.PlayerState.PLAYING ? 'play' : 'pause', ytPlayer.getCurrentTime());
+        }
+      }}
     });
-  }
-
-  function onYtStateChange(e) {
-    if (!isHost || suppressRemoteEcho) return;
-    if (e.data === YT.PlayerState.PLAYING || e.data === YT.PlayerState.PAUSED) {
-      pushRoomState(e.data === YT.PlayerState.PLAYING ? 'play' : 'pause', ytPlayer.getCurrentTime());
-    }
-  }
-
-  // ---------- room state helpers ----------
-  function pushRoomState(state, time) {
-    roomRef.update({ state, time, updatedAt: Date.now() });
   }
 
   function loadYoutube(idOrUrl) {
     const id = extractYoutubeId(idOrUrl);
-    if (!id) { alert("Lien ou ID YouTube introuvable."); return; }
-    roomRef.update({ videoType: 'youtube', videoId: id, state: 'pause', time: 0, updatedAt: Date.now() });
+    if (!id) { alert("Lien YouTube invalide."); return; }
+    roomRef.update({ videoType: 'youtube', videoUrl: id, state: 'pause', time: 0, updatedAt: Date.now() });
   }
 
   function extractYoutubeId(input) {
@@ -456,153 +375,72 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
     return m ? m[1] : null;
   }
 
-  // ---------- local file mode: host BROADCASTS the video live ----------
-  function setupLocalVideo() {
+  // --- Lien Direct (.mp4) Logique ---
+  function setupDirectVideo(url) {
     const wrap = $('#video-wrap');
     wrap.innerHTML = '';
-    localVideoEl = document.createElement('video');
-    localVideoEl.playsInline = true;
-    localVideoEl.controls = isHost;
-    localVideoEl.autoplay = true;
-    wrap.appendChild(localVideoEl);
-  }
-
-  $('#local-file-input').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file || !localVideoEl || !isHost) return;
-    localVideoEl.src = URL.createObjectURL(file);
-    localVideoEl.onloadedmetadata = () => {
-      localVideoEl.play().catch(() => {});
-      startHostStream();
-    };
-  });
-
-  function startHostStream() {
-    if (!localVideoEl) return;
-    try {
-      localStream = localVideoEl.captureStream ? localVideoEl.captureStream() : localVideoEl.mozCaptureStream();
-    } catch (err) {
-      alert("Ton navigateur ne permet pas de diffuser cette vidéo en direct.");
-      return;
+    directVideoEl = document.createElement('video');
+    directVideoEl.playsInline = true;
+    directVideoEl.src = url;
+    
+    if (isHost) {
+      directVideoEl.controls = true;
+      directVideoEl.addEventListener('play', () => !suppressRemoteEcho && pushRoomState('play', directVideoEl.currentTime));
+      directVideoEl.addEventListener('pause', () => !suppressRemoteEcho && pushRoomState('pause', directVideoEl.currentTime));
+      directVideoEl.addEventListener('seeked', () => !suppressRemoteEcho && pushRoomState(directVideoEl.paused ? 'pause' : 'play', directVideoEl.currentTime));
+    } else {
+      directVideoEl.controls = false; 
     }
-    resetBroadcast();
-    hostListenForViewers();
-    roomRef.update({ streamGen: Date.now() });
+    wrap.appendChild(directVideoEl);
   }
 
-  function resetBroadcast() {
-    Object.values(peers).forEach((pc) => { try { pc.close(); } catch (e) {} });
-    peers = {};
-    if (roomCode) rtdb.ref('rooms/' + roomCode + '/rtc').remove();
-  }
-
-  function hostListenForViewers() {
-    rtdb.ref('rooms/' + roomCode + '/rtc').on('child_added', (snap) => {
-      const viewerId = snap.key;
-      const data = snap.val();
-      if (data && data.offer && !peers[viewerId]) handleViewerOffer(viewerId, data.offer);
-    });
-  }
-
-  async function handleViewerOffer(viewerId, offerDesc) {
-    const iceServers = await getIceServers();
-    const pc = new RTCPeerConnection({ iceServers });
-    peers[viewerId] = pc;
-    pc.oniceconnectionstatechange = () => console.log('ICE state avec', viewerId, ':', pc.iceConnectionState);
-    if (localStream) localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
-    pc.onicecandidate = (e) => {
-      if (e.candidate) rtdb.ref('rooms/' + roomCode + '/rtc/' + viewerId + '/iceHost').push(e.candidate.toJSON());
-    };
-    try {
-      await pc.setRemoteDescription(new RTCSessionDescription(offerDesc));
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      rtdb.ref('rooms/' + roomCode + '/rtc/' + viewerId + '/answer').set({ type: answer.type, sdp: answer.sdp });
-      rtdb.ref('rooms/' + roomCode + '/rtc/' + viewerId + '/iceViewer').on('child_added', (s) => {
-        pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(() => {});
-      });
-    } catch (err) { console.error('Connexion spectateur échouée', err); }
-  }
-
-  async function connectAsViewer() {
-    const status = $('#stream-status');
-    if (status) { status.hidden = false; status.textContent = 'Connexion au flux de l’hôte…'; }
-    if (myPeer) { try { myPeer.close(); } catch (e) {} }
-
-    const iceServers = await getIceServers();
-    if (status && !turnOk) status.textContent = 'Connexion (sans relais TURN — ne marchera que sur le même wifi)…';
-    const pc = new RTCPeerConnection({ iceServers });
-    myPeer = pc;
-    pc.addTransceiver('video', { direction: 'recvonly' });
-    pc.addTransceiver('audio', { direction: 'recvonly' });
-
-    pc.oniceconnectionstatechange = () => {
-      console.log('ICE state:', pc.iceConnectionState);
-      if (!status) return;
-      if (pc.iceConnectionState === 'checking') status.textContent = 'Connexion au flux de l’hôte…';
-      if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') status.hidden = true;
-      if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
-        status.hidden = false;
-        status.textContent = turnOk
-          ? 'Connexion impossible malgré le relais TURN — regarde la console (F12) pour le détail.'
-          : 'Connexion impossible (pas de relais TURN actif) — vérifie ta clé Metered, ou testez sur le même wifi.';
-      }
-    };
-
-    pc.ontrack = (e) => {
-      if (status) status.hidden = true;
-      if (localVideoEl) {
-        localVideoEl.srcObject = e.streams[0];
-        showJoinStreamButton();
-      }
-    };
-    pc.onicecandidate = (e) => {
-      if (e.candidate) rtdb.ref('rooms/' + roomCode + '/rtc/' + myId + '/iceViewer').push(e.candidate.toJSON());
-    };
-
-    pc.createOffer().then((offer) => pc.setLocalDescription(offer).then(() => {
-      rtdb.ref('rooms/' + roomCode + '/rtc/' + myId + '/offer').set({ type: offer.type, sdp: offer.sdp });
-    }));
-
-    rtdb.ref('rooms/' + roomCode + '/rtc/' + myId + '/answer').on('value', (snap) => {
-      const a = snap.val();
-      if (a && pc.currentRemoteDescription === null) pc.setRemoteDescription(new RTCSessionDescription(a)).catch(() => {});
-    });
-    rtdb.ref('rooms/' + roomCode + '/rtc/' + myId + '/iceHost').on('child_added', (s) => {
-      pc.addIceCandidate(new RTCIceCandidate(s.val())).catch(() => {});
-    });
-  }
-
-  function showJoinStreamButton() {
+  function showPlayButtonOverlay() {
     if ($('#join-stream-btn')) return;
     const wrap = $('#video-wrap');
     const btn = document.createElement('button');
     btn.id = 'join-stream-btn';
-    btn.textContent = '▶ Rejoindre le flux';
+    btn.textContent = '▶ Rejoindre la lecture synchronisée';
     btn.className = 'btn-primary';
     btn.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:auto;padding:14px 22px;z-index:5;';
-    btn.onclick = () => { localVideoEl.play().catch(() => {}); btn.remove(); };
+    btn.onclick = () => { 
+      if(directVideoEl) { directVideoEl.play().catch(()=>{}); } 
+      btn.remove(); 
+    };
     wrap.appendChild(btn);
   }
 
-
-  // ---------- applying remote state (non-host viewers, YouTube only —
-  // local mode syncs inherently since the video itself is streamed live) ----------
+  // --- Appliquer l'état pour les Spectateurs ---
   function applyRemoteState(data) {
-    if (!data || data.videoType !== 'youtube') return;
+    if (!data || !data.videoUrl) return;
     const elapsed = data.state === 'play' ? (Date.now() - data.updatedAt) / 1000 : 0;
     const targetTime = Math.max(0, (data.time || 0) + elapsed);
 
-    if (!ytPlayer && data.videoId) { pendingYtId = data.videoId; if (ytReady) createYtPlayer(data.videoId); return; }
-    if (!ytPlayer) return;
     suppressRemoteEcho = true;
-    const current = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0;
-    if (Math.abs(current - targetTime) > 1.5) ytPlayer.seekTo(targetTime, true);
-    if (data.state === 'play') ytPlayer.playVideo(); else ytPlayer.pauseVideo();
+
+    if (data.videoType === 'youtube') {
+      if (!ytPlayer) { pendingYtId = data.videoUrl; if (ytReady) createYtPlayer(data.videoUrl); return; }
+      const current = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0;
+      if (Math.abs(current - targetTime) > 1.5) ytPlayer.seekTo(targetTime, true);
+      if (data.state === 'play') ytPlayer.playVideo(); else ytPlayer.pauseVideo();
+    
+    } else if (data.videoType === 'url') {
+      if (!directVideoEl || directVideoEl.src !== data.videoUrl) {
+        setupDirectVideo(data.videoUrl);
+      }
+      if (Math.abs(directVideoEl.currentTime - targetTime) > 1.5) {
+        directVideoEl.currentTime = targetTime;
+      }
+      if (data.state === 'play') {
+        directVideoEl.play().catch(() => showPlayButtonOverlay());
+      } else {
+        directVideoEl.pause();
+      }
+    }
+    
     setTimeout(() => suppressRemoteEcho = false, 400);
   }
 
-  // ---------- room lifecycle ----------
+  // --- Gestion du Salon ---
   function enterRoom(code) {
     roomCode = code;
     roomRef = rtdb.ref('rooms/' + code);
@@ -614,7 +452,7 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
     roomRef.once('value').then((snap) => {
       if (!snap.exists()) {
         isHost = true;
-        roomRef.set({ host: myId, hostName: myName, videoType: 'youtube', videoId: '', state: 'pause', time: 0, updatedAt: Date.now() });
+        roomRef.set({ host: myId, hostName: myName, videoType: 'youtube', videoUrl: '', state: 'pause', time: 0, updatedAt: Date.now() });
       }
       listenRoom();
       listenChat();
@@ -626,50 +464,43 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
     roomRef.on('value', (snap) => {
       const data = snap.val();
       if (!data) return;
+      
+      const wasHost = isHost;
       isHost = data.host === myId;
       updateHostUI(data);
-      if (data.videoType !== sourceMode) switchSource(data.videoType, false);
-      if (data.videoType === 'youtube') {
-        if (!isHost) applyRemoteState(data);
-      } else if (data.videoType === 'local' && !isHost) {
-        if (data.streamGen && data.streamGen !== lastStreamGen) {
-          lastStreamGen = data.streamGen;
-          connectAsViewer();
-        }
+
+      if (data.videoType !== sourceMode || (!isHost && wasHost)) {
+        switchSource(data.videoType, false);
       }
+      
+      if (!isHost) applyRemoteState(data);
     });
   }
 
   function updateHostUI(data) {
     $('#host-status').textContent = isHost ? 'Tu es l’hôte' : (data.hostName || 'Quelqu’un') + ' contrôle la lecture';
-    $('#controls-bar').hidden = !isHost || sourceMode === 'local';
+    $('#controls-bar').hidden = !isHost;
     $('#viewer-note').hidden = isHost;
     $('#yt-loader').hidden = sourceMode !== 'youtube' || !isHost;
-    $('#local-loader').hidden = sourceMode !== 'local' || !isHost;
-    if (localVideoEl) localVideoEl.controls = isHost;
+    $('#url-loader').hidden = sourceMode !== 'url' || !isHost;
+    if (directVideoEl) directVideoEl.controls = isHost;
   }
 
   function switchSource(mode, writeToRoom) {
-    if (sourceMode === 'local' && mode !== 'local') {
-      if (isHost) {
-        if (localStream) { localStream.getTracks().forEach((t) => t.stop()); localStream = null; }
-        resetBroadcast();
-      }
-      if (myPeer) { try { myPeer.close(); } catch (e) {} myPeer = null; }
-      lastStreamGen = null;
-    }
     sourceMode = mode;
     $('#tab-youtube').classList.toggle('active', mode === 'youtube');
-    $('#tab-local').classList.toggle('active', mode === 'local');
+    $('#tab-url').classList.toggle('active', mode === 'url');
     $('#yt-loader').hidden = mode !== 'youtube' || !isHost;
-    $('#local-loader').hidden = mode !== 'local';
+    $('#url-loader').hidden = mode !== 'url' || !isHost;
+    
     ytPlayer = null;
-    if (mode === 'local') setupLocalVideo();
-    else $('#video-wrap').innerHTML = '<div class="video-placeholder">En attente d’une vidéo…</div>';
-    if (writeToRoom) roomRef.update({ videoType: mode, videoId: '', state: 'pause', time: 0, updatedAt: Date.now() });
+    directVideoEl = null;
+    $('#video-wrap').innerHTML = '<div class="video-placeholder">En attente d’une vidéo…</div>';
+    
+    if (writeToRoom) roomRef.update({ videoType: mode, videoUrl: '', state: 'pause', time: 0, updatedAt: Date.now() });
   }
 
-  // ---------- chat ----------
+  // --- Chat ---
   function listenChat() {
     chatRef.limitToLast(80).on('child_added', (snap) => {
       const m = snap.val();
@@ -689,11 +520,9 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
     });
   }
 
-  function postSystemMessage(text) {
-    chatRef.push({ system: true, text, ts: Date.now() });
-  }
+  function postSystemMessage(text) { chatRef.push({ system: true, text, ts: Date.now() }); }
 
-  // ---------- events: join ----------
+  // --- Evenements ---
   $('#join-form').addEventListener('submit', (e) => {
     e.preventDefault();
     myName = $('#name-input').value.trim();
@@ -703,22 +532,24 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
     enterRoom(code);
   });
 
-  // ---------- events: tabs ----------
   $('#tab-youtube').addEventListener('click', () => { if (isHost) switchSource('youtube', true); });
-  $('#tab-local').addEventListener('click', () => { if (isHost) switchSource('local', true); });
+  $('#tab-url').addEventListener('click', () => { if (isHost) switchSource('url', true); });
 
-  // ---------- events: youtube load ----------
   $('#yt-load-btn').addEventListener('click', () => loadYoutube($('#yt-url-input').value));
+  $('#url-load-btn').addEventListener('click', () => {
+    const url = $('#direct-url-input').value.trim();
+    if(url) roomRef.update({ videoType: 'url', videoUrl: url, state: 'pause', time: 0, updatedAt: Date.now() });
+  });
 
-  // ---------- events: host controls ----------
   $('#play-btn').addEventListener('click', () => {
     if (sourceMode === 'youtube' && ytPlayer) {
       const playing = ytPlayer.getPlayerState() === 1;
       playing ? ytPlayer.pauseVideo() : ytPlayer.playVideo();
-    } else if (sourceMode === 'local' && localVideoEl) {
-      localVideoEl.paused ? localVideoEl.play() : localVideoEl.pause();
+    } else if (sourceMode === 'url' && directVideoEl) {
+      directVideoEl.paused ? directVideoEl.play() : directVideoEl.pause();
     }
   });
+
   $('#fwd-btn').addEventListener('click', () => seekBy(10));
   $('#back-btn').addEventListener('click', () => seekBy(-10));
   function seekBy(delta) {
@@ -726,33 +557,28 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "COLLE_TA_CLE_ICI") {
       const t = Math.max(0, ytPlayer.getCurrentTime() + delta);
       ytPlayer.seekTo(t, true);
       pushRoomState(ytPlayer.getPlayerState() === 1 ? 'play' : 'pause', t);
-    } else if (sourceMode === 'local' && localVideoEl) {
-      localVideoEl.currentTime = Math.max(0, localVideoEl.currentTime + delta);
+    } else if (sourceMode === 'url' && directVideoEl) {
+      directVideoEl.currentTime = Math.max(0, directVideoEl.currentTime + delta);
     }
   }
 
-  // ---------- events: claim host ----------
-  $('#claim-host-btn').addEventListener('click', () => {
-    roomRef.update({ host: myId, hostName: myName });
-  });
+  $('#claim-host-btn').addEventListener('click', () => roomRef.update({ host: myId, hostName: myName }));
 
-  // ---------- events: chat ----------
   $('#chat-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const input = $('#chat-input');
-    const text = input.value.trim();
-    if (!text) return;
-    chatRef.push({ uid: myId, name: myName, text, ts: Date.now() });
+    if (!input.value.trim()) return;
+    chatRef.push({ uid: myId, name: myName, text: input.value.trim(), ts: Date.now() });
     input.value = '';
   });
 
-  // heartbeat while host is playing (drift correction for other viewers)
+  // Heartbeat pour corriger les petits décalages de temps en temps
   setInterval(() => {
     if (!isHost || !roomRef) return;
     if (sourceMode === 'youtube' && ytPlayer && ytPlayer.getPlayerState() === 1) {
       pushRoomState('play', ytPlayer.getCurrentTime());
-    } else if (sourceMode === 'local' && localVideoEl && !localVideoEl.paused) {
-      pushRoomState('play', localVideoEl.currentTime);
+    } else if (sourceMode === 'url' && directVideoEl && !directVideoEl.paused) {
+      pushRoomState('play', directVideoEl.currentTime);
     }
   }, 4000);
 
